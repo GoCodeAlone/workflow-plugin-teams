@@ -1,0 +1,29 @@
+{
+    "name": "workflow-plugin-teams",
+    "version": "0.1.0",
+    "description": "Microsoft Teams messaging plugin via Graph API",
+    "author": "GoCodeAlone",
+    "license": "MIT",
+    "type": "external",
+    "tier": "community",
+    "private": false,
+    "minEngineVersion": "0.3.30",
+    "keywords": ["teams", "microsoft", "messaging", "graph", "azure", "notifications"],
+    "homepage": "https://github.com/GoCodeAlone/workflow-plugin-teams",
+    "repository": "https://github.com/GoCodeAlone/workflow-plugin-teams",
+    "capabilities": {
+        "configProvider": false,
+        "moduleTypes": ["teams.provider"],
+        "stepTypes": [
+            "step.teams_send_message",
+            "step.teams_send_card",
+            "step.teams_reply_message",
+            "step.teams_delete_message",
+            "step.teams_create_channel",
+            "step.teams_add_member",
+            "step.teams_list_channel_messages",
+            "step.teams_get_message"
+        ],
+        "triggerTypes": ["trigger.teams"]
+    }
+}
