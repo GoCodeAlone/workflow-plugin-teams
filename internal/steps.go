@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
@@ -23,13 +24,19 @@ func newSendMessageStep(name string, config map[string]any) (*sendMessageStep, e
 func (s *sendMessageStep) Execute(ctx context.Context, _ map[string]any, _ map[string]map[string]any, current map[string]any, _ map[string]any, config map[string]any) (*sdk.StepResult, error) {
 	client, ok := GetClient(s.moduleName)
 	if !ok {
-		return &sdk.StepResult{Output: map[string]any{"error": "teams client not found: " + s.moduleName}}, nil
+		return nil, fmt.Errorf("teams_send_message: client %q not found", s.moduleName)
 	}
 	teamID := resolveValue("team_id", current, config)
 	channelID := resolveValue("channel_id", current, config)
 	content := resolveValue("content", current, config)
-	if teamID == "" || channelID == "" || content == "" {
-		return &sdk.StepResult{Output: map[string]any{"error": "team_id, channel_id, and content are required"}}, nil
+	if teamID == "" {
+		return nil, fmt.Errorf("teams_send_message: team_id required")
+	}
+	if channelID == "" {
+		return nil, fmt.Errorf("teams_send_message: channel_id required")
+	}
+	if content == "" {
+		return nil, fmt.Errorf("teams_send_message: content required")
 	}
 
 	body := models.NewChatMessage()
@@ -41,7 +48,7 @@ func (s *sendMessageStep) Execute(ctx context.Context, _ map[string]any, _ map[s
 
 	msg, err := client.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().Post(ctx, body, nil)
 	if err != nil {
-		return &sdk.StepResult{Output: map[string]any{"error": err.Error()}}, nil
+		return nil, fmt.Errorf("teams_send_message: %w", err)
 	}
 
 	msgID := ""
@@ -68,19 +75,25 @@ func newSendCardStep(name string, config map[string]any) (*sendCardStep, error) 
 func (s *sendCardStep) Execute(ctx context.Context, _ map[string]any, _ map[string]map[string]any, current map[string]any, _ map[string]any, config map[string]any) (*sdk.StepResult, error) {
 	client, ok := GetClient(s.moduleName)
 	if !ok {
-		return &sdk.StepResult{Output: map[string]any{"error": "teams client not found: " + s.moduleName}}, nil
+		return nil, fmt.Errorf("teams_send_card: client %q not found", s.moduleName)
 	}
 	teamID := resolveValue("team_id", current, config)
 	channelID := resolveValue("channel_id", current, config)
 	cardJSON := resolveValue("card", current, config)
-	if teamID == "" || channelID == "" || cardJSON == "" {
-		return &sdk.StepResult{Output: map[string]any{"error": "team_id, channel_id, and card are required"}}, nil
+	if teamID == "" {
+		return nil, fmt.Errorf("teams_send_card: team_id required")
+	}
+	if channelID == "" {
+		return nil, fmt.Errorf("teams_send_card: channel_id required")
+	}
+	if cardJSON == "" {
+		return nil, fmt.Errorf("teams_send_card: card required")
 	}
 
 	// Validate card JSON
 	var cardData map[string]any
 	if err := json.Unmarshal([]byte(cardJSON), &cardData); err != nil {
-		return &sdk.StepResult{Output: map[string]any{"error": "card must be valid JSON: " + err.Error()}}, nil
+		return nil, fmt.Errorf("teams_send_card: card must be valid JSON: %w", err)
 	}
 
 	body := models.NewChatMessage()
@@ -88,9 +101,11 @@ func (s *sendCardStep) Execute(ctx context.Context, _ map[string]any, _ map[stri
 	contentType := "application/vnd.microsoft.card.adaptive"
 	attachment.SetContentType(&contentType)
 	attachment.SetContent(&cardJSON)
+	attachID := "1"
+	attachment.SetId(&attachID)
 	body.SetAttachments([]models.ChatMessageAttachmentable{attachment})
 
-	// Set empty body required by Teams API when using attachments
+	// Teams API requires an HTML body that references the attachment
 	msgBody := models.NewItemBody()
 	emptyContent := "<attachment id=\"1\"></attachment>"
 	msgBody.SetContent(&emptyContent)
@@ -100,7 +115,7 @@ func (s *sendCardStep) Execute(ctx context.Context, _ map[string]any, _ map[stri
 
 	msg, err := client.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().Post(ctx, body, nil)
 	if err != nil {
-		return &sdk.StepResult{Output: map[string]any{"error": err.Error()}}, nil
+		return nil, fmt.Errorf("teams_send_card: %w", err)
 	}
 
 	msgID := ""
@@ -127,14 +142,23 @@ func newReplyMessageStep(name string, config map[string]any) (*replyMessageStep,
 func (s *replyMessageStep) Execute(ctx context.Context, _ map[string]any, _ map[string]map[string]any, current map[string]any, _ map[string]any, config map[string]any) (*sdk.StepResult, error) {
 	client, ok := GetClient(s.moduleName)
 	if !ok {
-		return &sdk.StepResult{Output: map[string]any{"error": "teams client not found: " + s.moduleName}}, nil
+		return nil, fmt.Errorf("teams_reply_message: client %q not found", s.moduleName)
 	}
 	teamID := resolveValue("team_id", current, config)
 	channelID := resolveValue("channel_id", current, config)
 	messageID := resolveValue("message_id", current, config)
 	content := resolveValue("content", current, config)
-	if teamID == "" || channelID == "" || messageID == "" || content == "" {
-		return &sdk.StepResult{Output: map[string]any{"error": "team_id, channel_id, message_id, and content are required"}}, nil
+	if teamID == "" {
+		return nil, fmt.Errorf("teams_reply_message: team_id required")
+	}
+	if channelID == "" {
+		return nil, fmt.Errorf("teams_reply_message: channel_id required")
+	}
+	if messageID == "" {
+		return nil, fmt.Errorf("teams_reply_message: message_id required")
+	}
+	if content == "" {
+		return nil, fmt.Errorf("teams_reply_message: content required")
 	}
 
 	body := models.NewChatMessage()
@@ -146,7 +170,7 @@ func (s *replyMessageStep) Execute(ctx context.Context, _ map[string]any, _ map[
 
 	reply, err := client.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().ByChatMessageId(messageID).Replies().Post(ctx, body, nil)
 	if err != nil {
-		return &sdk.StepResult{Output: map[string]any{"error": err.Error()}}, nil
+		return nil, fmt.Errorf("teams_reply_message: %w", err)
 	}
 
 	replyID := ""
@@ -174,19 +198,24 @@ func newDeleteMessageStep(name string, config map[string]any) (*deleteMessageSte
 func (s *deleteMessageStep) Execute(ctx context.Context, _ map[string]any, _ map[string]map[string]any, current map[string]any, _ map[string]any, config map[string]any) (*sdk.StepResult, error) {
 	client, ok := GetClient(s.moduleName)
 	if !ok {
-		return &sdk.StepResult{Output: map[string]any{"error": "teams client not found: " + s.moduleName}}, nil
+		return nil, fmt.Errorf("teams_delete_message: client %q not found", s.moduleName)
 	}
 	teamID := resolveValue("team_id", current, config)
 	channelID := resolveValue("channel_id", current, config)
 	messageID := resolveValue("message_id", current, config)
-	if teamID == "" || channelID == "" || messageID == "" {
-		return &sdk.StepResult{Output: map[string]any{"error": "team_id, channel_id, and message_id are required"}}, nil
+	if teamID == "" {
+		return nil, fmt.Errorf("teams_delete_message: team_id required")
+	}
+	if channelID == "" {
+		return nil, fmt.Errorf("teams_delete_message: channel_id required")
+	}
+	if messageID == "" {
+		return nil, fmt.Errorf("teams_delete_message: message_id required")
 	}
 
-	// Graph API soft-deletes channel messages
 	err := client.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().ByChatMessageId(messageID).Delete(ctx, nil)
 	if err != nil {
-		return &sdk.StepResult{Output: map[string]any{"error": err.Error()}}, nil
+		return nil, fmt.Errorf("teams_delete_message: %w", err)
 	}
 	return &sdk.StepResult{Output: map[string]any{"deleted": true, "message_id": messageID}}, nil
 }
@@ -204,13 +233,16 @@ func newCreateChannelStep(name string, config map[string]any) (*createChannelSte
 func (s *createChannelStep) Execute(ctx context.Context, _ map[string]any, _ map[string]map[string]any, current map[string]any, _ map[string]any, config map[string]any) (*sdk.StepResult, error) {
 	client, ok := GetClient(s.moduleName)
 	if !ok {
-		return &sdk.StepResult{Output: map[string]any{"error": "teams client not found: " + s.moduleName}}, nil
+		return nil, fmt.Errorf("teams_create_channel: client %q not found", s.moduleName)
 	}
 	teamID := resolveValue("team_id", current, config)
 	displayName := resolveValue("display_name", current, config)
 	description := resolveValue("description", current, config)
-	if teamID == "" || displayName == "" {
-		return &sdk.StepResult{Output: map[string]any{"error": "team_id and display_name are required"}}, nil
+	if teamID == "" {
+		return nil, fmt.Errorf("teams_create_channel: team_id required")
+	}
+	if displayName == "" {
+		return nil, fmt.Errorf("teams_create_channel: display_name required")
 	}
 
 	channel := models.NewChannel()
@@ -226,7 +258,7 @@ func (s *createChannelStep) Execute(ctx context.Context, _ map[string]any, _ map
 
 	created, err := client.Teams().ByTeamId(teamID).Channels().Post(ctx, channel, nil)
 	if err != nil {
-		return &sdk.StepResult{Output: map[string]any{"error": err.Error()}}, nil
+		return nil, fmt.Errorf("teams_create_channel: %w", err)
 	}
 
 	channelID := ""
@@ -253,12 +285,15 @@ func newAddMemberStep(name string, config map[string]any) (*addMemberStep, error
 func (s *addMemberStep) Execute(ctx context.Context, _ map[string]any, _ map[string]map[string]any, current map[string]any, _ map[string]any, config map[string]any) (*sdk.StepResult, error) {
 	client, ok := GetClient(s.moduleName)
 	if !ok {
-		return &sdk.StepResult{Output: map[string]any{"error": "teams client not found: " + s.moduleName}}, nil
+		return nil, fmt.Errorf("teams_add_member: client %q not found", s.moduleName)
 	}
 	teamID := resolveValue("team_id", current, config)
 	userID := resolveValue("user_id", current, config)
-	if teamID == "" || userID == "" {
-		return &sdk.StepResult{Output: map[string]any{"error": "team_id and user_id are required"}}, nil
+	if teamID == "" {
+		return nil, fmt.Errorf("teams_add_member: team_id required")
+	}
+	if userID == "" {
+		return nil, fmt.Errorf("teams_add_member: user_id required")
 	}
 
 	member := models.NewAadUserConversationMember()
@@ -268,14 +303,13 @@ func (s *addMemberStep) Execute(ctx context.Context, _ map[string]any, _ map[str
 	}
 	member.SetRoles(roles)
 	userOdataID := fmt.Sprintf("https://graph.microsoft.com/v1.0/users/%s", userID)
-	additionalData := map[string]any{
+	member.SetAdditionalData(map[string]any{
 		"user@odata.bind": userOdataID,
-	}
-	member.SetAdditionalData(additionalData)
+	})
 
 	added, err := client.Teams().ByTeamId(teamID).Members().Post(ctx, member, nil)
 	if err != nil {
-		return &sdk.StepResult{Output: map[string]any{"error": err.Error()}}, nil
+		return nil, fmt.Errorf("teams_add_member: %w", err)
 	}
 
 	memberID := ""
@@ -302,12 +336,15 @@ func newListChannelMessagesStep(name string, config map[string]any) (*listChanne
 func (s *listChannelMessagesStep) Execute(ctx context.Context, _ map[string]any, _ map[string]map[string]any, current map[string]any, _ map[string]any, config map[string]any) (*sdk.StepResult, error) {
 	client, ok := GetClient(s.moduleName)
 	if !ok {
-		return &sdk.StepResult{Output: map[string]any{"error": "teams client not found: " + s.moduleName}}, nil
+		return nil, fmt.Errorf("teams_list_channel_messages: client %q not found", s.moduleName)
 	}
 	teamID := resolveValue("team_id", current, config)
 	channelID := resolveValue("channel_id", current, config)
-	if teamID == "" || channelID == "" {
-		return &sdk.StepResult{Output: map[string]any{"error": "team_id and channel_id are required"}}, nil
+	if teamID == "" {
+		return nil, fmt.Errorf("teams_list_channel_messages: team_id required")
+	}
+	if channelID == "" {
+		return nil, fmt.Errorf("teams_list_channel_messages: channel_id required")
 	}
 
 	top := resolveInt("top", current, config)
@@ -321,7 +358,7 @@ func (s *listChannelMessagesStep) Execute(ctx context.Context, _ map[string]any,
 
 	result, err := client.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().Get(ctx, reqParams)
 	if err != nil {
-		return &sdk.StepResult{Output: map[string]any{"error": err.Error()}}, nil
+		return nil, fmt.Errorf("teams_list_channel_messages: %w", err)
 	}
 
 	messages := make([]any, 0)
@@ -359,18 +396,24 @@ func newGetMessageStep(name string, config map[string]any) (*getMessageStep, err
 func (s *getMessageStep) Execute(ctx context.Context, _ map[string]any, _ map[string]map[string]any, current map[string]any, _ map[string]any, config map[string]any) (*sdk.StepResult, error) {
 	client, ok := GetClient(s.moduleName)
 	if !ok {
-		return &sdk.StepResult{Output: map[string]any{"error": "teams client not found: " + s.moduleName}}, nil
+		return nil, fmt.Errorf("teams_get_message: client %q not found", s.moduleName)
 	}
 	teamID := resolveValue("team_id", current, config)
 	channelID := resolveValue("channel_id", current, config)
 	messageID := resolveValue("message_id", current, config)
-	if teamID == "" || channelID == "" || messageID == "" {
-		return &sdk.StepResult{Output: map[string]any{"error": "team_id, channel_id, and message_id are required"}}, nil
+	if teamID == "" {
+		return nil, fmt.Errorf("teams_get_message: team_id required")
+	}
+	if channelID == "" {
+		return nil, fmt.Errorf("teams_get_message: channel_id required")
+	}
+	if messageID == "" {
+		return nil, fmt.Errorf("teams_get_message: message_id required")
 	}
 
 	msg, err := client.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().ByChatMessageId(messageID).Get(ctx, nil)
 	if err != nil {
-		return &sdk.StepResult{Output: map[string]any{"error": err.Error()}}, nil
+		return nil, fmt.Errorf("teams_get_message: %w", err)
 	}
 
 	msgID := ""
@@ -392,5 +435,84 @@ func (s *getMessageStep) Execute(ctx context.Context, _ map[string]any, _ map[st
 		"author_id":  authorID,
 		"team_id":    teamID,
 		"channel_id": channelID,
+	}}, nil
+}
+
+// uploadFileStep implements step.teams_upload_file
+// Uploads a file to a Teams channel's SharePoint folder via the Drive API.
+// Accepts base64-encoded content in the `content` field, or a `drive_id` + `parent_item_id` to
+// target a specific location directly.
+type uploadFileStep struct {
+	name       string
+	moduleName string
+}
+
+func newUploadFileStep(name string, config map[string]any) (*uploadFileStep, error) {
+	return &uploadFileStep{name: name, moduleName: getModuleName(config)}, nil
+}
+
+func (s *uploadFileStep) Execute(ctx context.Context, _ map[string]any, _ map[string]map[string]any, current map[string]any, _ map[string]any, config map[string]any) (*sdk.StepResult, error) {
+	client, ok := GetClient(s.moduleName)
+	if !ok {
+		return nil, fmt.Errorf("teams_upload_file: client %q not found", s.moduleName)
+	}
+	filename := resolveValue("filename", current, config)
+	contentB64 := resolveValue("content", current, config)
+	if filename == "" {
+		return nil, fmt.Errorf("teams_upload_file: filename required")
+	}
+	if contentB64 == "" {
+		return nil, fmt.Errorf("teams_upload_file: content (base64-encoded) required")
+	}
+
+	fileBytes, err := base64.StdEncoding.DecodeString(contentB64)
+	if err != nil {
+		return nil, fmt.Errorf("teams_upload_file: content must be base64-encoded: %w", err)
+	}
+
+	// Option A: direct drive_id + parent_item_id
+	driveID := resolveValue("drive_id", current, config)
+	parentItemID := resolveValue("parent_item_id", current, config)
+
+	// Option B: derive from team_id + channel_id (uses FilesFolder)
+	if driveID == "" || parentItemID == "" {
+		teamID := resolveValue("team_id", current, config)
+		channelID := resolveValue("channel_id", current, config)
+		if teamID == "" || channelID == "" {
+			return nil, fmt.Errorf("teams_upload_file: provide (drive_id + parent_item_id) or (team_id + channel_id)")
+		}
+		folder, ferr := client.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).FilesFolder().Get(ctx, nil)
+		if ferr != nil {
+			return nil, fmt.Errorf("teams_upload_file: get files folder: %w", ferr)
+		}
+		if folder.GetParentReference() != nil && folder.GetParentReference().GetDriveId() != nil {
+			driveID = *folder.GetParentReference().GetDriveId()
+		}
+		if folder.GetId() != nil {
+			parentItemID = *folder.GetId()
+		}
+		if driveID == "" || parentItemID == "" {
+			return nil, fmt.Errorf("teams_upload_file: could not resolve drive/folder for channel")
+		}
+	}
+
+	uploadPath := fmt.Sprintf("%s:/%s:/content", parentItemID, filename)
+	item, err := client.Drives().ByDriveId(driveID).Items().ByDriveItemId(uploadPath).Content().Put(ctx, fileBytes, nil)
+	if err != nil {
+		return nil, fmt.Errorf("teams_upload_file: %w", err)
+	}
+
+	itemID := filename
+	if item != nil && item.GetId() != nil {
+		itemID = *item.GetId()
+	}
+	webURL := ""
+	if item != nil && item.GetWebUrl() != nil {
+		webURL = *item.GetWebUrl()
+	}
+	return &sdk.StepResult{Output: map[string]any{
+		"item_id":  itemID,
+		"filename": filename,
+		"web_url":  webURL,
 	}}, nil
 }

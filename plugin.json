@@ -1,5 +1,5 @@
 {
-    "name": "workflow-plugin-teams",
+    "name": "teams",
     "version": "0.1.0",
     "description": "Microsoft Teams messaging plugin via Graph API",
     "author": "GoCodeAlone",
@@ -22,7 +22,8 @@
             "step.teams_create_channel",
             "step.teams_add_member",
             "step.teams_list_channel_messages",
-            "step.teams_get_message"
+            "step.teams_get_message",
+            "step.teams_upload_file"
         ],
         "triggerTypes": ["trigger.teams"]
     }

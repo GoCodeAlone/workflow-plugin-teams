@@ -18,7 +18,7 @@ func NewTeamsPlugin() sdk.PluginProvider {
 // Manifest returns plugin metadata.
 func (p *teamsPlugin) Manifest() sdk.PluginManifest {
 	return sdk.PluginManifest{
-		Name:        "workflow-plugin-teams",
+		Name:        "teams",
 		Version:     "0.1.0",
 		Author:      "GoCodeAlone",
 		Description: "Microsoft Teams messaging plugin via Graph API",

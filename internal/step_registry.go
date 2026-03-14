@@ -19,6 +19,7 @@ var stepRegistry = map[string]stepConstructor{
 	"step.teams_add_member":             func(n string, c map[string]any) (sdk.StepInstance, error) { return newAddMemberStep(n, c) },
 	"step.teams_list_channel_messages":  func(n string, c map[string]any) (sdk.StepInstance, error) { return newListChannelMessagesStep(n, c) },
 	"step.teams_get_message":            func(n string, c map[string]any) (sdk.StepInstance, error) { return newGetMessageStep(n, c) },
+	"step.teams_upload_file":            func(n string, c map[string]any) (sdk.StepInstance, error) { return newUploadFileStep(n, c) },
 }
 
 // createStep dispatches to the appropriate step constructor.

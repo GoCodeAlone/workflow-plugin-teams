@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"testing"
 )
 
@@ -39,6 +40,47 @@ func TestTeamsModule_Init_PartialCredentials(t *testing.T) {
 	}
 }
 
+func TestTeamsModule_MessagingProvider_Uninitialized(t *testing.T) {
+	m, _ := newTeamsModule("test", map[string]any{})
+	ctx := context.Background()
+
+	if _, err := m.SendMessage(ctx, "c1", "hello", nil); err == nil {
+		t.Error("expected error from uninitialized SendMessage")
+	}
+	if err := m.DeleteMessage(ctx, "c1", "m1"); err == nil {
+		t.Error("expected error from uninitialized DeleteMessage")
+	}
+	if _, err := m.SendReply(ctx, "c1", "m1", "reply", nil); err == nil {
+		t.Error("expected error from uninitialized SendReply")
+	}
+	if _, err := m.UploadFile(ctx, "c1", nil, "file.txt"); err == nil {
+		t.Error("expected error from uninitialized UploadFile")
+	}
+}
+
+func TestTeamsModule_MessagingProvider_Name(t *testing.T) {
+	m, _ := newTeamsModule("test", map[string]any{})
+	if m.Name() != "teams" {
+		t.Errorf("expected Name()='teams', got %q", m.Name())
+	}
+}
+
+func TestTeamsModule_MessagingProvider_EditMessage_NotSupported(t *testing.T) {
+	m, _ := newTeamsModule("test", map[string]any{})
+	err := m.EditMessage(context.Background(), "c1", "m1", "new content")
+	if err == nil {
+		t.Error("expected EditMessage to return error (not supported)")
+	}
+}
+
+func TestTeamsModule_MessagingProvider_React_NotSupported(t *testing.T) {
+	m, _ := newTeamsModule("test", map[string]any{})
+	err := m.React(context.Background(), "c1", "m1", "👍")
+	if err == nil {
+		t.Error("expected React to return error (not supported)")
+	}
+}
+
 func TestGetModuleName_Default(t *testing.T) {
 	name := getModuleName(map[string]any{})
 	if name != "teams" {
@@ -68,13 +110,11 @@ func TestResolveValue(t *testing.T) {
 }
 
 func TestRegistry(t *testing.T) {
-	// GetClient on missing name returns false
 	_, ok := GetClient("nonexistent")
 	if ok {
 		t.Error("expected GetClient to return false for nonexistent client")
 	}
-	// UnregisterClient on missing name is safe
-	UnregisterClient("nonexistent")
+	UnregisterClient("nonexistent") // must not panic
 }
 
 func TestStepRegistry_UnknownType(t *testing.T) {
@@ -98,6 +138,7 @@ func TestAllStepTypes(t *testing.T) {
 		"step.teams_add_member",
 		"step.teams_list_channel_messages",
 		"step.teams_get_message",
+		"step.teams_upload_file",
 	}
 	typeSet := make(map[string]bool, len(types))
 	for _, t := range types {
@@ -111,13 +152,6 @@ func TestAllStepTypes(t *testing.T) {
 }
 
 func TestStepExecute_MissingClient(t *testing.T) {
-	steps := []struct {
-		name    string
-		stepFn  func(string, map[string]any) (interface{ Execute(interface{}, map[string]any, map[string]map[string]any, map[string]any, map[string]any, map[string]any) (interface{}, error) }, error)
-	}{}
-	_ = steps
-
-	// Test each step returns an error output (not a hard error) when client is missing
 	testCases := []struct {
 		stepType string
 		current  map[string]any
@@ -163,6 +197,11 @@ func TestStepExecute_MissingClient(t *testing.T) {
 			map[string]any{"team_id": "t1", "channel_id": "c1", "message_id": "m1"},
 			map[string]any{"module": "nonexistent"},
 		},
+		{
+			"step.teams_upload_file",
+			map[string]any{"team_id": "t1", "channel_id": "c1", "filename": "test.txt", "content": "aGVsbG8="},
+			map[string]any{"module": "nonexistent"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -172,14 +211,12 @@ func TestStepExecute_MissingClient(t *testing.T) {
 				t.Fatalf("createStep error: %v", err)
 			}
 			result, err := step.Execute(nil, nil, nil, tc.current, nil, tc.config)
-			if err != nil {
-				t.Fatalf("Execute returned hard error: %v", err)
+			// With the corrected error pattern, steps return (nil, error) on failure
+			if err == nil {
+				t.Fatalf("expected error for missing client, got result: %v", result)
 			}
-			if result == nil {
-				t.Fatal("expected non-nil result")
-			}
-			if _, hasErr := result.Output["error"]; !hasErr {
-				t.Errorf("expected output to contain 'error' key, got %v", result.Output)
+			if result != nil {
+				t.Errorf("expected nil result when error is returned, got %v", result)
 			}
 		})
 	}
@@ -206,6 +243,16 @@ func TestStepExecute_MissingRequiredParams(t *testing.T) {
 			map[string]any{"team_id": "t1"},
 			map[string]any{},
 		},
+		{
+			"step.teams_upload_file",
+			map[string]any{},
+			map[string]any{},
+		},
+		{
+			"step.teams_upload_file",
+			map[string]any{"filename": "test.txt"},
+			map[string]any{},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -215,24 +262,32 @@ func TestStepExecute_MissingRequiredParams(t *testing.T) {
 				t.Fatalf("createStep error: %v", err)
 			}
 			result, err := step.Execute(nil, nil, nil, tc.current, nil, tc.config)
-			if err != nil {
-				t.Fatalf("Execute returned hard error: %v", err)
-			}
-			if result == nil {
-				t.Fatal("expected non-nil result")
-			}
-			if _, hasErr := result.Output["error"]; !hasErr {
-				t.Errorf("expected output to contain 'error' key for missing params")
+			if err == nil {
+				t.Fatalf("expected error for missing params, got result: %v", result)
 			}
 		})
+	}
+}
+
+func TestUploadFile_InvalidBase64(t *testing.T) {
+	step, _ := createStep("step.teams_upload_file", "test", map[string]any{})
+	current := map[string]any{
+		"filename": "test.txt",
+		"content":  "not-valid-base64!!!",
+		"drive_id": "d1",
+		"parent_item_id": "p1",
+	}
+	_, err := step.Execute(nil, nil, nil, current, nil, map[string]any{})
+	if err == nil {
+		t.Fatal("expected error for invalid base64 content")
 	}
 }
 
 func TestTeamsPlugin_Manifest(t *testing.T) {
 	p := NewTeamsPlugin()
 	m := p.Manifest()
-	if m.Name == "" {
-		t.Error("manifest name is empty")
+	if m.Name != "teams" {
+		t.Errorf("expected manifest name 'teams', got %q", m.Name)
 	}
 	if m.Version == "" {
 		t.Error("manifest version is empty")
