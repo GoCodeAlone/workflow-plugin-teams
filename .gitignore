@@ -2,3 +2,4 @@ bin/
 dist/
 *.tar.gz
 workflow-plugin-teams
+workflow-plugin-teams-linux
