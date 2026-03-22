@@ -2,6 +2,9 @@ package internal
 
 import (
 	"context"
+	crypto_rand "crypto/rand"
+	"crypto/hmac"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,6 +46,7 @@ type teamsTrigger struct {
 	callback    sdk.TriggerCallback
 	server      *http.Server
 	subID       string
+	clientState string
 	mu          sync.Mutex
 	cancel      context.CancelFunc
 }
@@ -135,12 +139,21 @@ func (t *teamsTrigger) createSubscription(ctx context.Context) error {
 	notificationURL := t.callbackURL + "/teams/notifications"
 	latestTLSVersion := "v1_2"
 
+	// Generate a cryptographically random clientState secret so that only
+	// notifications from Microsoft Graph (which echoes it back) are accepted.
+	secretBytes := make([]byte, 32)
+	if _, err := crypto_rand.Read(secretBytes); err != nil {
+		return fmt.Errorf("generate clientState: %w", err)
+	}
+	t.clientState = hex.EncodeToString(secretBytes)
+
 	sub := models.NewSubscription()
 	sub.SetResource(&resource)
 	sub.SetChangeType(&changeType)
 	sub.SetNotificationUrl(&notificationURL)
 	sub.SetExpirationDateTime(&expiry)
 	sub.SetLatestSupportedTlsVersion(&latestTLSVersion)
+	sub.SetClientState(&t.clientState)
 
 	created, err := client.Subscriptions().Post(ctx, sub, nil)
 	if err != nil {
@@ -203,6 +216,17 @@ func (t *teamsTrigger) handleNotification(w http.ResponseWriter, r *http.Request
 	if err := json.Unmarshal(body, &payload); err != nil {
 		http.Error(w, "parse error", http.StatusBadRequest)
 		return
+	}
+
+	// Verify clientState on every notification before processing any of them.
+	// This prevents forged notifications from parties who know the endpoint URL.
+	if t.clientState != "" {
+		for _, n := range payload.Value {
+			if !hmac.Equal([]byte(n.ClientState), []byte(t.clientState)) {
+				http.Error(w, "invalid clientState", http.StatusForbidden)
+				return
+			}
+		}
 	}
 
 	w.WriteHeader(http.StatusAccepted)
