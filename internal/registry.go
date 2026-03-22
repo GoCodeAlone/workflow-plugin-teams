@@ -9,6 +9,7 @@ import (
 var (
 	clientMu       sync.RWMutex
 	clientRegistry = make(map[string]*msgraphsdk.GraphServiceClient)
+	mockBaseURLs   = make(map[string]string)
 )
 
 // RegisterClient adds a Graph client to the global registry under the given name.
@@ -31,4 +32,20 @@ func UnregisterClient(name string) {
 	clientMu.Lock()
 	defer clientMu.Unlock()
 	delete(clientRegistry, name)
+	delete(mockBaseURLs, name)
+}
+
+// RegisterMockBaseURL stores a base URL for mock mode HTTP calls.
+func RegisterMockBaseURL(name, baseURL string) {
+	clientMu.Lock()
+	defer clientMu.Unlock()
+	mockBaseURLs[name] = baseURL
+}
+
+// GetMockBaseURL retrieves the mock base URL for a module, if any.
+func GetMockBaseURL(name string) (string, bool) {
+	clientMu.RLock()
+	defer clientMu.RUnlock()
+	u, ok := mockBaseURLs[name]
+	return u, ok && u != ""
 }

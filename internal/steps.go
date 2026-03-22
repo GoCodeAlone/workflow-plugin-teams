@@ -55,8 +55,14 @@ func (s *sendMessageStep) Execute(ctx context.Context, _ map[string]any, _ map[s
 	if msg.GetId() != nil {
 		msgID = *msg.GetId()
 	}
+	webURL := ""
+	if msg.GetWebUrl() != nil {
+		webURL = *msg.GetWebUrl()
+	}
 	return &sdk.StepResult{Output: map[string]any{
+		"id":         msgID,
 		"message_id": msgID,
+		"web_url":    webURL,
 		"team_id":    teamID,
 		"channel_id": channelID,
 	}}, nil
@@ -122,8 +128,14 @@ func (s *sendCardStep) Execute(ctx context.Context, _ map[string]any, _ map[stri
 	if msg.GetId() != nil {
 		msgID = *msg.GetId()
 	}
+	webURL := ""
+	if msg.GetWebUrl() != nil {
+		webURL = *msg.GetWebUrl()
+	}
 	return &sdk.StepResult{Output: map[string]any{
+		"id":         msgID,
 		"message_id": msgID,
+		"web_url":    webURL,
 		"team_id":    teamID,
 		"channel_id": channelID,
 	}}, nil
@@ -177,11 +189,17 @@ func (s *replyMessageStep) Execute(ctx context.Context, _ map[string]any, _ map[
 	if reply.GetId() != nil {
 		replyID = *reply.GetId()
 	}
+	replyToID := messageID
+	if reply.GetReplyToId() != nil {
+		replyToID = *reply.GetReplyToId()
+	}
 	return &sdk.StepResult{Output: map[string]any{
-		"reply_id":   replyID,
-		"message_id": messageID,
-		"team_id":    teamID,
-		"channel_id": channelID,
+		"id":          replyID,
+		"reply_id":    replyID,
+		"reply_to_id": replyToID,
+		"message_id":  messageID,
+		"team_id":     teamID,
+		"channel_id":  channelID,
 	}}, nil
 }
 
@@ -265,9 +283,15 @@ func (s *createChannelStep) Execute(ctx context.Context, _ map[string]any, _ map
 	if created.GetId() != nil {
 		channelID = *created.GetId()
 	}
+	webURL := ""
+	if created.GetWebUrl() != nil {
+		webURL = *created.GetWebUrl()
+	}
 	return &sdk.StepResult{Output: map[string]any{
+		"id":           channelID,
 		"channel_id":   channelID,
 		"display_name": displayName,
+		"web_url":      webURL,
 		"team_id":      teamID,
 	}}, nil
 }

@@ -7,6 +7,11 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	messaging "github.com/GoCodeAlone/workflow-plugin-messaging-core"
+	kiota "github.com/microsoft/kiota-abstractions-go"
+	kiotaabstractions "github.com/microsoft/kiota-abstractions-go/authentication"
+	absser "github.com/microsoft/kiota-abstractions-go/serialization"
+	kiotahttp "github.com/microsoft/kiota-http-go"
+	kiotajson "github.com/microsoft/kiota-serialization-json-go"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/microsoftgraph/msgraph-sdk-go/models"
 )
@@ -21,6 +26,8 @@ type teamsModule struct {
 	clientID string
 	secret   string
 	teamID   string // default team for messaging.Provider methods
+	baseURL  string // optional: overrides Graph API base URL (for testing)
+	mockMode bool   // when true, skips OAuth and uses mock HTTP client
 	client   *msgraphsdk.GraphServiceClient
 }
 
@@ -29,17 +36,49 @@ func newTeamsModule(name string, config map[string]any) (*teamsModule, error) {
 	clientID, _ := config["client_id"].(string)
 	secret, _ := config["client_secret"].(string)
 	teamID, _ := config["team_id"].(string)
+	baseURL, _ := config["baseURL"].(string)
+	mockMode := false
+	if v, ok := config["mock_mode"].(bool); ok {
+		mockMode = v
+	}
 	return &teamsModule{
 		name:     name,
 		tenantID: tenantID,
 		clientID: clientID,
 		secret:   secret,
 		teamID:   teamID,
+		baseURL:  baseURL,
+		mockMode: mockMode,
 	}, nil
 }
 
 // Init creates the Graph client and registers it in the global registry.
 func (m *teamsModule) Init() error {
+	if m.mockMode {
+		// In mock mode, create a Graph client pointing to the mock HTTP server.
+		// AnonymousAuthenticationProvider skips token acquisition.
+		// Register JSON serializers so the SDK can serialize/deserialize requests.
+		kiota.RegisterDefaultSerializer(func() absser.SerializationWriterFactory {
+			return kiotajson.NewJsonSerializationWriterFactory()
+		})
+		kiota.RegisterDefaultDeserializer(func() absser.ParseNodeFactory {
+			return kiotajson.NewJsonParseNodeFactory()
+		})
+		authProvider := &kiotaabstractions.AnonymousAuthenticationProvider{}
+		adapter, err := kiotahttp.NewNetHttpRequestAdapterWithParseNodeFactory(authProvider, nil)
+		if err != nil {
+			return fmt.Errorf("teams.provider %q: mock adapter: %w", m.name, err)
+		}
+		baseURL := m.baseURL
+		if baseURL == "" {
+			baseURL = "http://localhost:19061"
+		}
+		adapter.SetBaseUrl(baseURL)
+		client := msgraphsdk.NewGraphServiceClient(adapter)
+		m.client = client
+		RegisterClient(m.name, client)
+		return nil
+	}
 	if m.tenantID == "" || m.clientID == "" || m.secret == "" {
 		return fmt.Errorf("teams.provider %q: tenant_id, client_id, and client_secret are required", m.name)
 	}
