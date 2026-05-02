@@ -1,6 +1,6 @@
 {
     "name": "teams",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "description": "Microsoft Teams messaging plugin via Graph API",
     "author": "GoCodeAlone",
     "license": "MIT",
@@ -26,5 +26,27 @@
             "step.teams_upload_file"
         ],
         "triggerTypes": ["trigger.teams"]
-    }
+    },
+    "downloads": [
+        {
+            "os": "linux",
+            "arch": "amd64",
+            "url": "https://github.com/GoCodeAlone/workflow-plugin-teams/releases/download/v0.1.2/workflow-plugin-teams-linux-amd64.tar.gz"
+        },
+        {
+            "os": "linux",
+            "arch": "arm64",
+            "url": "https://github.com/GoCodeAlone/workflow-plugin-teams/releases/download/v0.1.2/workflow-plugin-teams-linux-arm64.tar.gz"
+        },
+        {
+            "os": "darwin",
+            "arch": "amd64",
+            "url": "https://github.com/GoCodeAlone/workflow-plugin-teams/releases/download/v0.1.2/workflow-plugin-teams-darwin-amd64.tar.gz"
+        },
+        {
+            "os": "darwin",
+            "arch": "arm64",
+            "url": "https://github.com/GoCodeAlone/workflow-plugin-teams/releases/download/v0.1.2/workflow-plugin-teams-darwin-arm64.tar.gz"
+        }
+    ]
 }

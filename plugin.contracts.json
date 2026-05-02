@@ -1,0 +1,90 @@
+{
+    "version": "1.0",
+    "contracts": [
+        {
+            "kind": "module",
+            "type": "teams.provider",
+            "mode": "strict",
+            "config": "teams.v1.ProviderConfig"
+        },
+        {
+            "kind": "step",
+            "type": "step.teams_send_message",
+            "mode": "strict",
+            "config": "teams.v1.SendMessageConfig",
+            "input": "teams.v1.SendMessageInput",
+            "output": "teams.v1.SendMessageOutput"
+        },
+        {
+            "kind": "step",
+            "type": "step.teams_send_card",
+            "mode": "strict",
+            "config": "teams.v1.SendCardConfig",
+            "input": "teams.v1.SendCardInput",
+            "output": "teams.v1.SendCardOutput"
+        },
+        {
+            "kind": "step",
+            "type": "step.teams_reply_message",
+            "mode": "strict",
+            "config": "teams.v1.ReplyMessageConfig",
+            "input": "teams.v1.ReplyMessageInput",
+            "output": "teams.v1.ReplyMessageOutput"
+        },
+        {
+            "kind": "step",
+            "type": "step.teams_delete_message",
+            "mode": "strict",
+            "config": "teams.v1.DeleteMessageConfig",
+            "input": "teams.v1.DeleteMessageInput",
+            "output": "teams.v1.DeleteMessageOutput"
+        },
+        {
+            "kind": "step",
+            "type": "step.teams_create_channel",
+            "mode": "strict",
+            "config": "teams.v1.CreateChannelConfig",
+            "input": "teams.v1.CreateChannelInput",
+            "output": "teams.v1.CreateChannelOutput"
+        },
+        {
+            "kind": "step",
+            "type": "step.teams_add_member",
+            "mode": "strict",
+            "config": "teams.v1.AddMemberConfig",
+            "input": "teams.v1.AddMemberInput",
+            "output": "teams.v1.AddMemberOutput"
+        },
+        {
+            "kind": "step",
+            "type": "step.teams_list_channel_messages",
+            "mode": "strict",
+            "config": "teams.v1.ListChannelMessagesConfig",
+            "input": "teams.v1.ListChannelMessagesInput",
+            "output": "teams.v1.ListChannelMessagesOutput"
+        },
+        {
+            "kind": "step",
+            "type": "step.teams_get_message",
+            "mode": "strict",
+            "config": "teams.v1.GetMessageConfig",
+            "input": "teams.v1.GetMessageInput",
+            "output": "teams.v1.GetMessageOutput"
+        },
+        {
+            "kind": "step",
+            "type": "step.teams_upload_file",
+            "mode": "strict",
+            "config": "teams.v1.UploadFileConfig",
+            "input": "teams.v1.UploadFileInput",
+            "output": "teams.v1.UploadFileOutput"
+        },
+        {
+            "kind": "trigger",
+            "type": "trigger.teams",
+            "mode": "strict",
+            "config": "teams.v1.TriggerConfig",
+            "output": "teams.v1.TriggerEvent"
+        }
+    ]
+}
