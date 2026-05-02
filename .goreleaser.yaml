@@ -38,6 +38,7 @@ archives:
     name_template: "workflow-plugin-teams-{{ .Os }}-{{ .Arch }}"
     files:
       - plugin.json
+      - plugin.contracts.json
 
 checksum:
   name_template: checksums.txt

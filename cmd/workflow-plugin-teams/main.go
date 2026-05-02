@@ -11,6 +11,13 @@ import (
 var version = "0.0.0"
 
 func main() {
-	internal.Version = version
+	// Only forward the ldflags version to internal.Version when the linker
+	// actually injected a real release tag.  If a build sets only
+	// -X github.com/GoCodeAlone/workflow-plugin-teams/internal.Version=X.Y.Z
+	// without also setting -X main.version=X.Y.Z, the default "0.0.0" must
+	// not clobber the already-injected value.
+	if version != "0.0.0" {
+		internal.Version = version
+	}
 	sdk.Serve(internal.NewTeamsPlugin())
 }
