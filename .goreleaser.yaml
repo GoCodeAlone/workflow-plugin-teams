@@ -2,22 +2,10 @@ version: 2
 
 before:
   hooks:
-    - "cp plugin.json plugin.json.orig"
-    - "sed -i.bak 's/\"version\": \".*\"/\"version\": \"{{ .Version }}\"/' plugin.json && rm -f plugin.json.bak"
-    - >-
-      python3 -c "
-      import json;
-      m=json.load(open('plugin.json'));
-      v='{{ .Version }}';
-      b='https://github.com/GoCodeAlone/workflow-plugin-teams/releases/download/v'+v+'/workflow-plugin-teams-';
-      m['downloads']=[
-        {'os':'linux','arch':'amd64','url':b+'linux-amd64.tar.gz'},
-        {'os':'linux','arch':'arm64','url':b+'linux-arm64.tar.gz'},
-        {'os':'darwin','arch':'amd64','url':b+'darwin-amd64.tar.gz'},
-        {'os':'darwin','arch':'arm64','url':b+'darwin-arm64.tar.gz'}
-      ];
-      open('plugin.json','w').write(json.dumps(m,indent=4)+'\n')
-      "
+    # Update plugin.json version and download URLs for the release.
+    # The script uses jq (standard on Linux/macOS) so no Python dependency is needed.
+    # The OS/arch list in the script intentionally mirrors builds.goos/goarch below.
+    - sh scripts/update-plugin-json.sh {{ .Version }}
 
 builds:
   - main: ./cmd/workflow-plugin-teams
