@@ -2,8 +2,10 @@ version: 2
 
 before:
   hooks:
-    - "cp plugin.json plugin.json.orig"
-    - "sed -i.bak 's/\"version\": \".*\"/\"version\": \"{{ .Version }}\"/' plugin.json && rm -f plugin.json.bak"
+    # Update plugin.json version and download URLs for the release.
+    # The script uses jq (standard on Linux/macOS) so no Python dependency is needed.
+    # The OS/arch list in the script intentionally mirrors builds.goos/goarch below.
+    - sh scripts/update-plugin-json.sh {{ .Version }}
 
 builds:
   - main: ./cmd/workflow-plugin-teams
@@ -24,6 +26,7 @@ archives:
     name_template: "workflow-plugin-teams-{{ .Os }}-{{ .Arch }}"
     files:
       - plugin.json
+      - plugin.contracts.json
 
 checksum:
   name_template: checksums.txt
