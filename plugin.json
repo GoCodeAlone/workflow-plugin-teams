@@ -1,19 +1,28 @@
 {
     "name": "teams",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Microsoft Teams messaging plugin via Graph API",
     "author": "GoCodeAlone",
     "license": "MIT",
     "type": "external",
     "tier": "community",
     "private": false,
-    "minEngineVersion": "0.3.30",
-    "keywords": ["teams", "microsoft", "messaging", "graph", "azure", "notifications"],
+    "minEngineVersion": "0.51.7",
+    "keywords": [
+        "teams",
+        "microsoft",
+        "messaging",
+        "graph",
+        "azure",
+        "notifications"
+    ],
     "homepage": "https://github.com/GoCodeAlone/workflow-plugin-teams",
     "repository": "https://github.com/GoCodeAlone/workflow-plugin-teams",
     "capabilities": {
         "configProvider": false,
-        "moduleTypes": ["teams.provider"],
+        "moduleTypes": [
+            "teams.provider"
+        ],
         "stepTypes": [
             "step.teams_send_message",
             "step.teams_send_card",
@@ -25,7 +34,9 @@
             "step.teams_get_message",
             "step.teams_upload_file"
         ],
-        "triggerTypes": ["trigger.teams"]
+        "triggerTypes": [
+            "trigger.teams"
+        ]
     },
     "downloads": [
         {
