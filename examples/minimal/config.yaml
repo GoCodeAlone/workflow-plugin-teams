@@ -1,0 +1,13 @@
+# Minimal config exercising workflow-plugin-teams.
+# Schema-validate with: wfctl validate --skip-unknown-types examples/minimal/config.yaml
+version: 1
+modules:
+  - name: teams-provider
+    type: teams.provider
+    config: {}
+workflows:
+  pipeline:
+    steps:
+      - name: example
+        type: step.teams_send_message
+        config: {}
