@@ -19,5 +19,5 @@ func main() {
 	if version != "0.0.0" {
 		internal.Version = version
 	}
-	sdk.Serve(internal.NewTeamsPlugin())
+	sdk.Serve(internal.NewTeamsPlugin(), sdk.WithBuildVersion(sdk.ResolveBuildVersion(internal.Version)))
 }
