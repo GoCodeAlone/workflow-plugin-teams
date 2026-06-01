@@ -1,6 +1,6 @@
 {
     "name": "teams",
-    "version": "0.1.3",
+    "version": "0.0.0",
     "description": "Microsoft Teams messaging plugin via Graph API",
     "author": "GoCodeAlone",
     "license": "MIT",
