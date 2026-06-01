@@ -45,49 +45,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  notify-registry:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [release]
+  notify-workflow-registry:
+    name: Notify workflow-registry
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: release
+    if: >-
+      !github.event.deleted
+      && !contains(github.ref_name, '-')
+      && github.repository == 'GoCodeAlone/workflow-plugin-teams'
     steps:
-      # workflow#765: runtime truth-check via plugin verify-capabilities.
-      - name: Verify capabilities (runtime truth-check)
-        run: |
-          RUNNER_ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-          BIN=$(jq -r --arg arch "$RUNNER_ARCH" \
-            '[.[] | select(.type=="Binary" and .goos=="linux" and .goarch==$arch and (.name|startswith("workflow-plugin-teams")))] | .[0].path // ""' \
-            dist/artifacts.json)
-          if [ -z "$BIN" ] || [ "$BIN" = "null" ]; then
-            echo "::warning::No matching linux/$RUNNER_ARCH binary in dist/artifacts.json; skipping verify-capabilities"
-            jq '.[] | {name, type, goos, goarch, path}' dist/artifacts.json
-            exit 0
-          fi
-          "${{ runner.temp }}/wfctl-bin/wfctl" plugin verify-capabilities --binary "$BIN" .
-      - name: Notify workflow-registry
-        if: env.GH_TOKEN != ''
-        uses: peter-evans/repository-dispatch@v3
+      - name: Trigger registry manifest sync
+        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697  # v4
         with:
-          token: ${{ secrets.REGISTRY_PAT }}
+          token: ${{ secrets.repo_dispatch_token }}
           repository: GoCodeAlone/workflow-registry
           event-type: plugin-release
-          client-payload: >-
-            {"plugin": "${{ github.repository }}", "tag": "${{ github.ref_name }}"}
-        env:
-          GH_TOKEN: ${{ secrets.REGISTRY_PAT }}
-        continue-on-error: true
-      - name: Publish GitHub release
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const tag = process.env.GITHUB_REF_NAME;
-            const { owner, repo } = context.repo;
-            const { data: release } = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
-            if (release.draft) {
-              await github.rest.repos.updateRelease({
-                owner,
-                repo,
-                release_id: release.id,
-                draft: false,
-              });
-            }
+          client-payload: |-
+            {"plugin": "teams", "tag": "${{ github.ref_name }}"}
