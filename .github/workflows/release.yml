@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 env:
   GONOSUMCHECK: github.com/GoCodeAlone/*
@@ -15,7 +16,7 @@ env:
 
 jobs:
   release:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
@@ -28,28 +29,21 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install wfctl v0.63.2
-        run: |
-          mkdir -p "${RUNNER_TEMP}/wfctl-bin"
-          curl -sSfL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -o "${RUNNER_TEMP}/wfctl-bin/wfctl" \
-            "https://github.com/GoCodeAlone/workflow/releases/download/v0.63.2/wfctl-linux-amd64"
-          chmod +x "${RUNNER_TEMP}/wfctl-bin/wfctl"
+      - uses: GoCodeAlone/setup-wfctl@v1
+        with:
+          version: v0.64.3
+
       - name: Validate plugin contract for publish (pre-build)
-        run: "${{ runner.temp }}/wfctl-bin/wfctl plugin validate-contract --for-publish --tag ${{ github.ref_name }} ."
+        run: wfctl plugin validate-contract --for-publish --tag "${{ github.ref_name }}" .
+
       - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
-          version: '~> v2'
+          version: latest
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  publish-release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [release]
-    runs-on: ubuntu-latest
-    steps:
       # workflow#765: runtime truth-check via plugin verify-capabilities.
       - name: Verify capabilities (runtime truth-check)
         run: |
@@ -62,33 +56,26 @@ jobs:
             jq '.[] | {name, type, goos, goarch, path}' dist/artifacts.json
             exit 0
           fi
-          "${{ runner.temp }}/wfctl-bin/wfctl" plugin verify-capabilities --binary "$BIN" .
+          wfctl plugin verify-capabilities --binary "$BIN" .
       - name: Verify shipped plugin.json carries tag (post-build)
         run: |
-          "${{ runner.temp }}/wfctl-bin/wfctl" plugin validate-contract --for-publish --tag ${{ github.ref_name }} --release-dir . .
+          if [ -f .release/plugin.json ]; then
+            wfctl plugin validate-contract --for-publish --tag "${{ github.ref_name }}" --release-dir .release .
+          else
+            wfctl plugin validate-contract --for-publish --tag "${{ github.ref_name }}" --release-dir . .
+          fi
       - name: Publish GitHub release
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const tag = process.env.GITHUB_REF_NAME;
-            const { owner, repo } = context.repo;
-            const { data: release } = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
-            if (release.draft) {
-              await github.rest.repos.updateRelease({
-                owner,
-                repo,
-                release_id: release.id,
-                draft: false,
-              });
-            }
+        if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false --repo "${{ github.repository }}"
 
   notify-workflow-registry:
     name: Notify workflow-registry
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    needs: publish-release
+    needs: release
     if: >-
       !github.event.deleted
       && !contains(github.ref_name, '-')
